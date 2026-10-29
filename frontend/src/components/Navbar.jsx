@@ -39,7 +39,7 @@ export default function Navbar({onMenuClick}){
           <div className="account-menu">
             <strong>{user?.name || "Developer"}</strong>
             <span>{user?.email || "demo@example.com"}</span>
-            <button onClick={handleLogout}>Log out</button>
+            <button onClick={handlelogout}>Log out</button>
           </div>
         )}
 

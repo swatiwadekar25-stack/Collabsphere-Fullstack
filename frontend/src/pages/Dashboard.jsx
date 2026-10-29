@@ -18,7 +18,9 @@ export default function Dashboard({ projects, onDelete }) {
       <div className="welcome-row">
         <div>
           <span className="eyebrow">YOUR WORKSPACE</span>
-          <h1>Good to see you, {user?.name || "Developer"} 👋</h1>
+          <h1>Good to see you, {
+                    user?.name?.trim() ||
+                    "Developer"} 👋</h1>
           <p className="muted">
             Here's what's happening in your developer workspace.
           </p>
