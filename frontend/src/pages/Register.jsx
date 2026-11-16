@@ -8,10 +8,11 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (name.trim().length < 2) {
@@ -19,13 +20,21 @@ export default function Register() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must contain at least 6 characters.");
+    if (password.length < 8) {
+      setError("Password must contain at least 8 characters.");
       return;
     }
 
-    register(name.trim(), email.trim());
-    navigate("/");
+    setLoading(true);
+    setError("");
+    try {
+      await register(name.trim(), email.trim(), password);
+      navigate("/");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -76,22 +85,19 @@ export default function Register() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 6 characters"
-            minLength={6}
+            placeholder="At least 8 characters"
+            minLength={8}
             required
           />
 
           <button className="primary-button full-width" type="submit">
-            Create account →
+            {loading ? "Creating account…" : "Create account →"}
           </button>
 
           <p className="auth-switch">
             Already registered? <Link to="/login">Sign in</Link>
           </p>
 
-          <p className="demo-notice">
-            Demo only: account details are not sent to a server.
-          </p>
         </form>
       </section>
     </main>

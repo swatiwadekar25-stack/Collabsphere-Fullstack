@@ -1,7 +1,9 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const askAI = async (req, res, next) => {
+const createAskAI = (createClient = () => new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+})) => async (req, res, next) => {
   try {
     const { prompt } = req.body;
 
@@ -23,9 +25,7 @@ const askAI = async (req, res, next) => {
       });
     }
 
-    const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-    });
+    const ai = createClient();
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -36,7 +36,8 @@ const askAI = async (req, res, next) => {
       answer: response.text || "The AI did not return any text.",
     });
   } catch (error) {
-    console.error("Gemini request failed:", error.message);
+    // SDK errors can contain request details; keep credentials out of logs.
+    console.error("Gemini request failed.");
 
     res.status(502).json({
       message: "The AI assistant could not process your request.",
@@ -44,4 +45,6 @@ const askAI = async (req, res, next) => {
   }
 };
 
-export { askAI };
+const askAI = createAskAI();
+
+export { askAI, createAskAI };

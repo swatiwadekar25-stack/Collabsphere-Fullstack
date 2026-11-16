@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import MarkdownEditor from "../components/MarkdownEditor.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { apiRequest } from "../services/api.js";
 
 export default function ProjectDetails({ projects }) {
   const { id } = useParams();
@@ -10,6 +12,8 @@ export default function ProjectDetails({ projects }) {
   const [aiInput, setAiInput] = useState("");
   const [aiResult, setAiResult] = useState("");
   const [aiMessage, setAiMessage] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const { token } = useAuth();
 
   if (!project) {
     return (
@@ -24,20 +28,55 @@ export default function ProjectDetails({ projects }) {
       </div>
     );
   }
-
-  function handleAI(event) {
+  async function handleAI(event) {
     event.preventDefault();
+    const promptText = aiInput.trim();
 
-    if (!aiInput.trim()) {
+    if (!promptText) {
+      setAiResult("");
       setAiMessage("Enter some text or code first.");
       return;
     }
 
-    setAiMessage(
-      "The Gemini API is not connected yet. We'll connect it through the backend in a later step."
-    );
+    if (!token) {
+      setAiResult("");
+      setAiMessage("Your session is missing or expired. Please sign in again.");
+      return;
+    }
+
+    const modeInstructions = {
+      explain: "Explain the following code or notes clearly:",
+      improve: "Review the following code and suggest improvements:",
+      docs: "Generate clear technical documentation for:",
+      readme: "Generate a professional README.md for:",
+    };
+
+    setAiLoading(true);
+    setAiMessage("Generating AI response…");
     setAiResult("");
+
+    try {
+      const data = await apiRequest("/ai/ask", {
+        method: "POST",
+        body: JSON.stringify({
+          prompt: `${modeInstructions[aiMode]}\n\n${promptText}`,
+        }),
+      });
+      if (typeof data.answer !== "string" || !data.answer.trim()) {
+        throw new Error("The AI service returned an empty response.");
+      }
+
+      setAiResult(data.answer);
+      setAiMessage("");
+    } catch (error) {
+      setAiMessage(error instanceof TypeError
+        ? "Could not reach the backend. Check that it is running on port 5000."
+        : error.message || "The AI request failed. Please try again.");
+    } finally {
+      setAiLoading(false);
+    }
   }
+
 
   return (
     <div className="page-content">
@@ -111,16 +150,12 @@ export default function ProjectDetails({ projects }) {
             placeholder="Paste code or describe your project..."
           />
 
-          <button className="primary-button full-width" onClick={handleAI}>
-            ✦ Prepare AI request
+          <button className="primary-button full-width" onClick={handleAI} disabled={aiLoading}>
+            {aiLoading ? "Generating…" : "✦ Prepare AI request"}
           </button>
 
-          {aiMessage && <div className="alert alert-info">{aiMessage}</div>}
+          {aiMessage && <div className="alert alert-info" role="status">{aiMessage}</div>}
           {aiResult && <pre className="markdown-preview">{aiResult}</pre>}
-
-          <p className="demo-notice">
-            AI responses become available after backend integration.
-          </p>
         </aside>
       </div>
     </div>

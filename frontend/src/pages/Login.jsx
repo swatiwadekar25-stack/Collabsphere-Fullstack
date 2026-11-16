@@ -7,10 +7,11 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
@@ -18,8 +19,16 @@ export default function Login() {
       return;
     }
 
-    login(email.trim());
-    navigate("/");
+    setLoading(true);
+    setError("");
+    try {
+      await login(email.trim(), password);
+      navigate("/");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -66,16 +75,13 @@ export default function Login() {
           />
 
           <button className="primary-button full-width" type="submit">
-            Sign in →
+            {loading ? "Signing in…" : "Sign in →"}
           </button>
 
           <p className="auth-switch">
             Don't have an account? <Link to="/register">Create account</Link>
           </p>
 
-          <p className="demo-notice">
-            Demo mode: any non-empty email and password will sign you in.
-          </p>
         </form>
       </section>
     </main>

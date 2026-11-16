@@ -1,7 +1,14 @@
 
-import "dotenv/config";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
+import mongoose from "mongoose";
+
+// Load the backend's local environment file even when `node backend/server.js`
+// is started from the repository root. In hosted environments, platform env
+// vars continue to take precedence.
+dotenv.config({ path: fileURLToPath(new URL("./.env", import.meta.url)) });
 
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -17,10 +24,24 @@ import {
 
 const app = express();
 
+const localOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
+const allowedOrigins = new Set([
+  ...localOrigins,
+  ...(process.env.CLIENT_URL || "").split(",").map((origin) => origin.trim()).filter(Boolean),
+]);
+
 // 1. Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Origin is not allowed by CORS."));
+    },
   })
 );
 
@@ -29,9 +50,26 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // 2. Health check (does not require a database connection)
 app.get("/api/health", (req, res) => {
+  const databaseConnected = mongoose.connection.readyState === 1;
   res.status(200).json({
-    status: "OK",
-    message: "CollabSphere backend is running.",
+    status: databaseConnected ? "OK" : "degraded",
+    server: "running",
+    database: {
+      status: databaseConnected ? "connected" : "disconnected",
+      name: mongoose.connection.name || null,
+    },
+  });
+});
+
+app.get("/health", (req, res) => {
+  const databaseConnected = mongoose.connection.readyState === 1;
+  res.status(200).json({
+    status: databaseConnected ? "OK" : "degraded",
+    server: "running",
+    database: {
+      status: databaseConnected ? "connected" : "disconnected",
+      name: mongoose.connection.name || null,
+    },
   });
 });
 
@@ -69,13 +107,25 @@ app.use("/api/ai", aiRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// 6. Local development only.
-// Vercel handles incoming requests in production.
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 5000;
+// Local development starts accepting requests only after MongoDB is ready.
+// Vercel invokes the exported app and connects lazily in the middleware above.
+async function startServer() {
+  await connectDB();
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`CollabSphere backend running on port ${PORT}`);
+  const port = Number(process.env.PORT || 5000);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("PORT must be a valid TCP port number.");
+  }
+
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`CollabSphere backend listening on port ${port}`);
+  });
+}
+
+if (process.env.NODE_ENV !== "production") {
+  startServer().catch((error) => {
+    console.error(`Backend startup failed: ${error.message}`);
+    process.exitCode = 1;
   });
 }
 

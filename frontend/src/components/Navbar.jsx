@@ -9,7 +9,7 @@ export default function Navbar({onMenuClick}){
 
     function handlelogout(){
         logout();
-        NavigateEvent("/login");
+        navigate("/login");
     }
 
     return(

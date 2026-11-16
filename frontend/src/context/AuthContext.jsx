@@ -1,49 +1,49 @@
 
 import { createContext, useContext, useState } from "react";
+import { apiRequest } from "../services/api.js";
 
 const AuthContext = createContext(null);
+const AUTH_STORAGE_KEY = "collabsphere_auth";
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
+  const [auth, setAuth] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("collabsphere_demo_user"));
+      return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)) || { user: null, token: null };
     } catch {
-      return null;
+      return { user: null, token: null };
     }
   });
 
-  function login(email) {
-    const demoUser = {
-      name: email.split("@")[0] || "Developer",
-      email,
-    };
-
-    localStorage.setItem(
-      "collabsphere_demo_user",
-      JSON.stringify(demoUser)
-    );
-
-    setUser(demoUser);
+  async function login(email, password) {
+    const result = await apiRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    const nextAuth = { user: result.user, token: result.token };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
+    setAuth(nextAuth);
+    return result;
   }
 
-  function register(name, email) {
-    const demoUser = { name, email };
-
-    localStorage.setItem(
-      "collabsphere_demo_user",
-      JSON.stringify(demoUser)
-    );
-
-    setUser(demoUser);
+  async function register(name, email, password) {
+    const result = await apiRequest("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    });
+    const nextAuth = { user: result.user, token: result.token };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
+    setAuth(nextAuth);
+    return result;
   }
 
   function logout() {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem("collabsphere_demo_user");
-    setUser(null);
+    setAuth({ user: null, token: null });
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ ...auth, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
