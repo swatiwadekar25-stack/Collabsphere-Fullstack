@@ -122,12 +122,11 @@ async function startServer() {
   });
 }
 
-if (process.env.NODE_ENV !== "production") {
+if (!process.env.VERCEL) {
   startServer().catch((error) => {
     console.error(`Backend startup failed: ${error.message}`);
     process.exitCode = 1;
   });
 }
-
 // 7. Export the Express app for Vercel
 export default app;
