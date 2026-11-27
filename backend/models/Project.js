@@ -31,6 +31,13 @@ const projectSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    collaborators: [{
+      email: { type: String, required: true, lowercase: true, trim: true },
+      name: { type: String, required: true, trim: true, maxlength: 80 },
+      addedAt: { type: Date, default: Date.now },
+    }],
+    readme: { type: String, default: "", maxlength: 100000 },
+    shareToken: { type: String, default: null, select: false },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
